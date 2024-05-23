@@ -12,6 +12,6 @@
 
 ### 3.強制對齊
 找出音檔中每個字的時間戳記，再利用時間戳記去把音檔中每一個字儲存為一個聲音檔案
-
+</p> <img src="https://github.com/Twbreak/speech-therapy/blob/main/picture_source/截圖%202024-05-23%20中午12.09.59.png" width="50%">
 
 
