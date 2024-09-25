@@ -5,6 +5,7 @@ from typing import List
 import IPython
 import matplotlib.pyplot as plt
 from pypinyin import pinyin, lazy_pinyin, Style
+from pydub import AudioSegment
 
 print(torch.__version__)
 print(torchaudio.__version__)
@@ -19,6 +20,47 @@ import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
+print(os.getcwd())
+######################################################################################################
+# 如果沒有 'raw_audio' 這個資料夾就做一個
+if not os.path.exists(f"{os.getcwd()}\\voice\\raw_audio"):
+    os.mkdir(f"{os.getcwd()}\\voice\\raw_audio")
+
+# 如果沒有 'sentences' 這個資料夾就做一個
+if not os.path.exists(f"{os.getcwd()}\\voice\\sentences"):
+    os.mkdir(f"{os.getcwd()}\\voice\\sentences")
+
+# 如果沒有 'data' 這個資料夾就做一個
+if not os.path.exists(f"{os.getcwd()}\\voice\\data"):
+    os.mkdir(f"{os.getcwd()}\\voice\\data")
+######################################################################################################
+
+######################################################################################################
+torch.cuda.empty_cache()
+torch.cuda.memory_summary(device=None, abbreviated=False)
+
+raw_data = (f"{os.getcwd()}\\voice\\raw_audio\\record.wav")
+model = whisper.load_model("large-v2")
+# 使用Whisper進行語音識別
+result = model.transcribe(raw_data)
+######################################################################################################
+
+######################################################################################################
+sentence =[]
+cc = OpenCC('s2t')
+for i in range(len(result['segments'])):
+    sentence.append([cc.convert(result['segments'][i]['text'].lower().replace('》','').replace('《','').replace('%','').replace('。','').replace('?','').replace('【','').replace('】','').replace('-','').replace('.','').replace(',', '').replace('6','六').replace('4','四').replace('2','二').replace('9','九').replace('8','八').replace('5','五').replace('3','三').replace('0','零').replace('1','一').replace('7','七').replace(' ','').replace('、','')), 
+                     result['segments'][i]['start'], 
+                     result['segments'][i]['end']])
+######################################################################################################
+
+######################################################################################################
+audio = AudioSegment.from_file(raw_data)
+for i in range(len(sentence)):
+    audio_clip = audio[sentence[i][1] *1000: sentence[i][2]*1000]
+    audio_clip.export(f"{os.getcwd()}\\voice\\sentences\\{(sentence[i][0].lower())}.wav", format="wav")
+######################################################################################################
+
 ######################################################################################################
 model = bundle.get_model()
 model.to(device)
@@ -34,7 +76,6 @@ def compute_alignments(waveform: torch.Tensor, transcript: List[str]):
 
 def _score(spans):
     return sum(s.score * len(s) for s in spans) / sum(len(s) for s in spans)
-
 
 def plot_alignments(waveform, token_spans, emission, transcript, sample_rate=bundle.sample_rate):
     ratio = waveform.size(1) / emission.size(1) / sample_rate
@@ -67,44 +108,13 @@ def preview_word(waveform, spans, num_frames, transcript, sample_rate):
     segment = waveform[:, x0:x1]
     #return IPython.display.Audio(segment.numpy(), rate=sample_rate)
     return time_StarAndEnd
+######################################################################################################
 
-# 如果沒有 'raw_audio' 這個資料夾就做一個
-if not os.path.exists(f"{os.getcwd()}\\raw_audio"):
-    os.mkdir(f"{os.getcwd()}\\raw_audio")
-
-# 如果沒有 'sentences' 這個資料夾就做一個
-if not os.path.exists(f"{os.getcwd()}\\sentences"):
-    os.mkdir(f"{os.getcwd()}\\sentences")
-
-# 如果沒有 'data' 這個資料夾就做一個
-if not os.path.exists(f"{os.getcwd()}\\data"):
-    os.mkdir(f"{os.getcwd()}\\data")
-
-
-torch.cuda.empty_cache()
-torch.cuda.memory_summary(device=None, abbreviated=False)
-
-raw_data = "raw_audio\\spring2_2.WAV"
-model = whisper.load_model("large-v2")
-# 使用Whisper進行語音識別
-result = model.transcribe(raw_data)
-
-sentence =[]
-cc = OpenCC('s2t')
-for i in range(len(result['segments'])):
-    sentence.append([cc.convert(result['segments'][i]['text'].lower().replace('》','').replace('《','').replace('%','').replace('。','').replace('?','').replace('【','').replace('】','').replace('-','').replace('.','').replace(',', '').replace('6','六').replace('4','四').replace('2','二').replace('9','九').replace('8','八').replace('5','五').replace('3','三').replace('0','零').replace('1','一').replace('7','七').replace(' ','').replace('、','')), 
-                     result['segments'][i]['start'], 
-                     result['segments'][i]['end']])
-
-audio = librosa.load(raw_data)
-for i in range(len(sentence)):
-    audio_clip = audio[sentence[i][1] *1000: sentence[i][2]*1000]
-    audio_clip.export(f"sentences\\{(sentence[i][0].lower())}.wav", format="wav")
-
+######################################################################################################
 for i in range(0,len(sentence)):#len(sentence)-1
     text_normalized = ' '.join(lazy_pinyin(sentence[i][0]))#將文字轉為沒有音調的拼音，lazy_pinyin是陣列所以要再join成字串
 
-    waveform, sample_rate = librosa.load(f"sentences\\{sentence[i][0]}.wav")
+    waveform, sample_rate = librosa.load(f"{os.getcwd()}\\voice\\sentences\\{sentence[i][0]}.wav")
     waveform_tensor = torch.tensor(waveform).unsqueeze(0)
 
     transcript = text_normalized.split()
@@ -126,9 +136,10 @@ for i in range(0,len(sentence)):#len(sentence)-1
         word_start_end.append([pinyin_tone[j][0], timeStartEnd[0], timeStartEnd[1]])
     print(word_start_end)
 
-    audio = librosa.load(f"sentences\\{sentence[i][0]}.wav")
+    audio = AudioSegment.from_file(f"{os.getcwd()}\\voice\\sentences\\{sentence[i][0]}.wav")
     file_name = sentence[i][0]
     for k in range(len(word_start_end)):
         segment_audio = audio[word_start_end[k][1] *1000: word_start_end[k][2]*1000]
-        segment_audio.export(f"data\\{file_name}-{k}_{word_start_end[k][0]}.wav", format="wav")
+        segment_audio.export(f"{os.getcwd()}\\voice\data\\{file_name}-{k}_{word_start_end[k][0]}.wav", format="wav")
     print('------------------------------------------')
+    ######################################################################################################

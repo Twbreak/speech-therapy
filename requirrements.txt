@@ -1,0 +1,10 @@
+torch==2.4.0+cu118
+torchaudio==2.4.0+cu118
+typing-extensions==4.11.0
+ipython==8.15.0
+matplotlib==3.8.0
+pypinyin==0.51.0
+openai-whisper==20231117
+librosa==0.10.2.post1
+OpenCC==1.1.7
+pydub==0.25.1
