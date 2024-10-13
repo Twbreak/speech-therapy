@@ -14,13 +14,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
 import whisper
+from pydub import AudioSegment
 import librosa
 from opencc import OpenCC
 import os
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device)
-print(os.getcwd())
+import speech_recognition
 ######################################################################################################
 # 如果沒有 'raw_audio' 這個資料夾就做一個
 if not os.path.exists(f"{os.getcwd()}\\voice\\raw_audio"):
@@ -38,27 +36,27 @@ if not os.path.exists(f"{os.getcwd()}\\voice\\data"):
 ######################################################################################################
 torch.cuda.empty_cache()
 torch.cuda.memory_summary(device=None, abbreviated=False)
+raw_data_path = f"{os.getcwd()}\\voice\\raw_audio\\record.wav"
+r = speech_recognition.Recognizer()
+raw_data = speech_recognition.AudioFile(raw_data_path)
+with raw_data as source:
+    audio = r.record(source)
+result = r.recognize_google(audio,language='zh-tw')
 
-raw_data = (f"{os.getcwd()}\\voice\\raw_audio\\record.wav")
-model = whisper.load_model("large-v2")
-# 使用Whisper進行語音識別
-result = model.transcribe(raw_data)
+
 ######################################################################################################
 
 ######################################################################################################
 sentence =[]
-cc = OpenCC('s2t')
-for i in range(len(result['segments'])):
-    sentence.append([cc.convert(result['segments'][i]['text'].lower().replace('》','').replace('《','').replace('%','').replace('。','').replace('?','').replace('【','').replace('】','').replace('-','').replace('.','').replace(',', '').replace('6','六').replace('4','四').replace('2','二').replace('9','九').replace('8','八').replace('5','五').replace('3','三').replace('0','零').replace('1','一').replace('7','七').replace(' ','').replace('、','')), 
-                     result['segments'][i]['start'], 
-                     result['segments'][i]['end']])
+for i in range(len(result)):
+    sentence.append((result.lower().replace('》','').replace('《','').replace('%','').replace('。','').replace('?','').replace('【','').replace('】','').replace('-','').replace('.','').replace(',', '').replace('6','六').replace('4','四').replace('2','二').replace('9','九').replace('8','八').replace('5','五').replace('3','三').replace('0','零').replace('1','一').replace('7','七').replace(' ','').replace('、','')))
 ######################################################################################################
 
 ######################################################################################################
-audio = AudioSegment.from_file(raw_data)
+audio = AudioSegment.from_file(raw_data_path)
 for i in range(len(sentence)):
-    audio_clip = audio[sentence[i][1] *1000: sentence[i][2]*1000]
-    audio_clip.export(f"{os.getcwd()}\\voice\\sentences\\{(sentence[i][0].lower())}.wav", format="wav")
+    audio_clip = audio
+    audio_clip.export(f"{os.getcwd()}\\voice\\sentences\\{(sentence[0].lower())}.wav", format="wav")
 ######################################################################################################
 
 ######################################################################################################
@@ -111,35 +109,35 @@ def preview_word(waveform, spans, num_frames, transcript, sample_rate):
 ######################################################################################################
 
 ######################################################################################################
-for i in range(0,len(sentence)):#len(sentence)-1
-    text_normalized = ' '.join(lazy_pinyin(sentence[i][0]))#將文字轉為沒有音調的拼音，lazy_pinyin是陣列所以要再join成字串
+text_normalized = ' '.join(lazy_pinyin(sentence[0]))#將文字轉為沒有音調的拼音，lazy_pinyin是陣列所以要再join成字串
 
-    waveform, sample_rate = librosa.load(f"{os.getcwd()}\\voice\\sentences\\{sentence[i][0]}.wav")
-    waveform_tensor = torch.tensor(waveform).unsqueeze(0)
+waveform, sample_rate = librosa.load(f"{os.getcwd()}\\voice\\sentences\\{sentence[0]}.wav")
+waveform_tensor = torch.tensor(waveform).unsqueeze(0)
 
-    transcript = text_normalized.split()
-    emission, token_spans = compute_alignments(waveform_tensor, transcript)
-    num_frames = emission.size(1)
+transcript = text_normalized.split()
+emission, token_spans = compute_alignments(waveform_tensor, transcript)
+num_frames = emission.size(1)
 
 
     #plot_alignments(waveform, token_spans, emission, transcript)
 
-    print("Raw Transcript: ", sentence[i][0])
-    print("Normalized Transcript: ", text_normalized)
-    IPython.display.Audio(waveform, rate=sample_rate)
+print("Raw Transcript: ", sentence[0])
+print("Normalized Transcript: ", text_normalized)
+IPython.display.Audio(waveform, rate=sample_rate)
 
-    text_raw = sentence[i][0]
-    word_start_end = []
-    pinyin_tone = pinyin(text_raw, style=Style.TONE3, heteronym=False)
-    for j in range(len(transcript)):#len(transcript)
-        timeStartEnd = preview_word(waveform_tensor, token_spans[j], num_frames, transcript[j], sample_rate)
-        word_start_end.append([pinyin_tone[j][0], timeStartEnd[0], timeStartEnd[1]])
+text_raw = sentence[0]
+word_start_end = []
+pinyin_tone = pinyin(text_raw, style=Style.TONE3, heteronym=False)
+for j in range(len(transcript)):#len(transcript)
+    timeStartEnd = preview_word(waveform_tensor, token_spans[j], num_frames, transcript[j], sample_rate)
+    word_start_end.append([pinyin_tone[j][0], timeStartEnd[0], timeStartEnd[1]])
     print(word_start_end)
 
-    audio = AudioSegment.from_file(f"{os.getcwd()}\\voice\\sentences\\{sentence[i][0]}.wav")
-    file_name = sentence[i][0]
-    for k in range(len(word_start_end)):
-        segment_audio = audio[word_start_end[k][1] *1000: word_start_end[k][2]*1000]
-        segment_audio.export(f"{os.getcwd()}\\voice\data\\{file_name}-{k}_{word_start_end[k][0]}.wav", format="wav")
-    print('------------------------------------------')
+    audio = AudioSegment.from_file(f"{os.getcwd()}\\voice\\sentences\\{sentence[0]}.wav")
+    file_name = sentence[0]
+for k in range(len(word_start_end)):
+    segment_audio = audio[word_start_end[k][1] *1000: word_start_end[k][2]*1000]
+    segment_audio.export(f"{os.getcwd()}\\voice\data\\{file_name}-{k}_{word_start_end[k][0]}.wav", format="wav")
+print('------------------------------------------')
+    
     ######################################################################################################
